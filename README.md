@@ -436,6 +436,9 @@ kubectl get pods -A
 
 ### Evidências por contexto
 
+> Dica de visualização: os prints estão em **tema escuro** e com **fonte ampliada**.  
+> Clique em cada imagem para abrir em tamanho real. Em telas menores, use a rolagem horizontal do navegador ao visualizar a imagem ampliada.
+
 #### Contexto 1: Saúde do cluster local (k3d)
 
 Comandos de referência:
@@ -446,8 +449,8 @@ kubectl get pods -A
 kubectl get storageclass
 ```
 
-![Nodes do cluster](./screenshots/01-kubectl-get-nodes.png)
-![StorageClass disponível](./screenshots/04-kubectl-get-storageclass.png)
+[![Nodes do cluster](./screenshots/01-kubectl-get-nodes.png)](./screenshots/01-kubectl-get-nodes.png)
+[![StorageClass disponível](./screenshots/04-kubectl-get-storageclass.png)](./screenshots/04-kubectl-get-storageclass.png)
 
 #### Contexto 2: Persistência com PV/PVC
 
@@ -459,9 +462,9 @@ kubectl get pvc -A
 kubectl describe pvc pvc-hostpath-demo -n storage-lab
 ```
 
-![PersistentVolumes](./screenshots/02-kubectl-get-pv.png)
-![PersistentVolumeClaims](./screenshots/03-kubectl-get-pvc-all.png)
-![PVC validado](./screenshots/05-describe-pvc-success.png)
+[![PersistentVolumes](./screenshots/02-kubectl-get-pv.png)](./screenshots/02-kubectl-get-pv.png)
+[![PersistentVolumeClaims](./screenshots/03-kubectl-get-pvc-all.png)](./screenshots/03-kubectl-get-pvc-all.png)
+[![PVC validado](./screenshots/05-describe-pvc-success.png)](./screenshots/05-describe-pvc-success.png)
 
 #### Contexto 3: Laboratórios de volume (emptyDir, hostPath, NFS)
 
@@ -473,9 +476,9 @@ kubectl describe pod hostpath-demo -n storage-lab
 kubectl get pods -n storage-lab -l app=nginx-nfs-demo
 ```
 
-![Teste do emptyDir](./screenshots/07-emptydir-logs.png)
-![Teste do hostPath](./screenshots/08-hostpath-http.png)
-![Teste do NFS compartilhado](./screenshots/09-nfs-shared-content.png)
+[![Teste do emptyDir](./screenshots/07-emptydir-logs.png)](./screenshots/07-emptydir-logs.png)
+[![Teste do hostPath](./screenshots/08-hostpath-http.png)](./screenshots/08-hostpath-http.png)
+[![Teste do NFS compartilhado](./screenshots/09-nfs-shared-content.png)](./screenshots/09-nfs-shared-content.png)
 
 #### Contexto 4: Configuração e segurança de aplicação
 
@@ -488,9 +491,9 @@ kubectl describe limitrange storage-limit-range -n storage-lab-quota
 kubectl describe resourcequota storage-resource-quota -n storage-lab-quota
 ```
 
-![ConfigMap como volume](./screenshots/10-configmap-volume.png)
-![Secret como volume](./screenshots/11-secret-volume.png)
-![Erro controlado de quota/limite](./screenshots/06-describe-pvc-error.png)
+[![ConfigMap como volume](./screenshots/10-configmap-volume.png)](./screenshots/10-configmap-volume.png)
+[![Secret como volume](./screenshots/11-secret-volume.png)](./screenshots/11-secret-volume.png)
+[![Erro controlado de quota/limite](./screenshots/06-describe-pvc-error.png)](./screenshots/06-describe-pvc-error.png)
 
 #### Contexto 5: Automação com PowerShell
 
@@ -502,7 +505,7 @@ Comandos de referência:
 .\scripts\cleanup-all.ps1
 ```
 
-![Execução dos scripts PowerShell](./screenshots/12-scripts-apply-check-cleanup.png)
+[![Execução dos scripts PowerShell](./screenshots/12-scripts-apply-check-cleanup.png)](./screenshots/12-scripts-apply-check-cleanup.png)
 
 ## Como publicar este projeto no GitHub
 

@@ -8,11 +8,86 @@ function Assert-Command {
     }
 }
 
+function Wrap-TextLine {
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Text,
+        [int]$MaxChars = 120
+    )
+
+    if ([string]::IsNullOrEmpty($Text) -or $Text.Length -le $MaxChars) {
+        return @($Text)
+    }
+
+    $wrapped = @()
+    $remaining = $Text
+
+    while ($remaining.Length -gt $MaxChars) {
+        $chunk = $remaining.Substring(0, $MaxChars)
+        $breakAt = $chunk.LastIndexOf(" ")
+        if ($breakAt -lt 16) {
+            $breakAt = $MaxChars
+        }
+
+        $wrapped += $remaining.Substring(0, $breakAt).TrimEnd()
+        if ($remaining.Length -le $breakAt) {
+            $remaining = ""
+        }
+        else {
+            $remaining = $remaining.Substring($breakAt).TrimStart()
+        }
+    }
+
+    if ($remaining.Length -gt 0) {
+        $wrapped += $remaining
+    }
+
+    return $wrapped
+}
+
+function Wrap-TextLines {
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][AllowEmptyString()][string[]]$Lines,
+        [int]$MaxChars = 120
+    )
+
+    $result = @()
+    foreach ($line in $Lines) {
+        $result += Wrap-TextLine -Text $line -MaxChars $MaxChars
+    }
+    return $result
+}
+
+function Normalize-CommandOutput {
+    param([Parameter(Mandatory = $true)][string]$RawOutput)
+
+    $lines = $RawOutput -split "`r?`n"
+    $filtered = @()
+    $memcacheCount = 0
+
+    foreach ($line in $lines) {
+        if ($line -match "memcache\.go:\d+") {
+            $memcacheCount++
+            continue
+        }
+        $filtered += $line
+    }
+
+    if ($memcacheCount -gt 0) {
+        $filtered = @(
+            "[Aviso] Saída resumida para legibilidade: $memcacheCount linha(s) de 'memcache.go' ocultadas.",
+            ""
+        ) + $filtered
+    }
+
+    return (($filtered | Where-Object { $_ -ne $null }) -join "`n")
+}
+
 function New-TextScreenshot {
     param(
         [Parameter(Mandatory = $true)][string]$OutputPath,
         [Parameter(Mandatory = $true)][string]$Title,
         [Parameter(Mandatory = $true)][string]$Command,
+        [string]$DisplayCommand = $Command,
         [Parameter(Mandatory = $true)][object]$Body,
         [Parameter(Mandatory = $true)][bool]$Succeeded
     )
@@ -20,9 +95,9 @@ function New-TextScreenshot {
     Add-Type -AssemblyName System.Drawing
 
     # Fontes maiores para melhorar leitura no GitHub.
-    $font = New-Object System.Drawing.Font("Consolas", 16)
-    $titleFont = New-Object System.Drawing.Font("Segoe UI", 22, [System.Drawing.FontStyle]::Bold)
-    $metaFont = New-Object System.Drawing.Font("Segoe UI", 14)
+    $font = New-Object System.Drawing.Font("Consolas", 18)
+    $titleFont = New-Object System.Drawing.Font("Segoe UI", 26, [System.Drawing.FontStyle]::Bold)
+    $metaFont = New-Object System.Drawing.Font("Segoe UI", 16)
 
     $status = if ($Succeeded) { "SUCESSO" } else { "FALHA" }
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
@@ -30,7 +105,7 @@ function New-TextScreenshot {
         "Kubernetes Storage Volumes Lab - Evidência",
         "Título: $Title",
         "Status: $status",
-        "Comando: $Command",
+        "Comando: $DisplayCommand",
         "Data/Hora: $timestamp"
     )
 
@@ -41,59 +116,70 @@ function New-TextScreenshot {
         [string]$Body
     }
 
+    $headerWrapped = Wrap-TextLines -Lines $header -MaxChars 95
+    $bodyLines = Wrap-TextLines -Lines ($bodyText -split "`r?`n") -MaxChars 120
+
     $lines = @()
-    $lines += $header
+    $lines += $headerWrapped
     $lines += ""
     $lines += "Saída:"
     $lines += "------------------------------------------------------------"
-    $lines += ($bodyText -split "`r?`n")
+    $lines += $bodyLines
 
     $dummyBitmap = New-Object System.Drawing.Bitmap 1, 1
     $graphics = [System.Drawing.Graphics]::FromImage($dummyBitmap)
     $graphics.PageUnit = [System.Drawing.GraphicsUnit]::Pixel
 
-    $maxWidth = 1600
+    $maxWidth = 1700
     foreach ($line in $lines) {
         $size = $graphics.MeasureString($line, $font)
         $candidate = [int]([Math]::Ceiling($size.Width)) + 40
         if ($candidate -gt $maxWidth) { $maxWidth = $candidate }
     }
+    if ($maxWidth -gt 2200) { $maxWidth = 2200 }
 
-    $lineHeight = [int]([Math]::Ceiling($font.GetHeight($graphics))) + 8
-    $titleHeight = 52
-    $metaHeight = 28
-    $height = 30 + $titleHeight + ($metaHeight * 4) + 20 + ($lineHeight * ($lines.Count - 5))
-    if ($height -lt 900) { $height = 900 }
+    $lineHeight = [int]([Math]::Ceiling($font.GetHeight($graphics))) + 10
+    $titleHeight = 60
+    $metaHeight = 34
+    $height = 30 + $titleHeight + ($metaHeight * ($headerWrapped.Count - 1)) + 20 + ($lineHeight * (($lines.Count - $headerWrapped.Count)))
+    if ($height -lt 1000) { $height = 1000 }
     if ($height -gt 6000) { $height = 6000 }
 
     $bitmap = New-Object System.Drawing.Bitmap $maxWidth, $height
     $g = [System.Drawing.Graphics]::FromImage($bitmap)
     # Tema escuro para melhor contraste no portfólio.
-    $g.Clear([System.Drawing.Color]::FromArgb(17, 24, 39))
+    $g.Clear([System.Drawing.Color]::FromArgb(11, 15, 25))
     $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::ClearTypeGridFit
 
-    $titleBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(241, 245, 249))
+    $titleBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(248, 250, 252))
     $metaBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(203, 213, 225))
-    $bodyBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(226, 232, 240))
+    $bodyBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(241, 245, 249))
     $statusColor = if ($Succeeded) {
-        [System.Drawing.Color]::FromArgb(74, 222, 128)
+        [System.Drawing.Color]::FromArgb(34, 197, 94)
     }
     else {
-        [System.Drawing.Color]::FromArgb(248, 113, 113)
+        [System.Drawing.Color]::FromArgb(239, 68, 68)
     }
     $statusBrush = New-Object System.Drawing.SolidBrush($statusColor)
 
     $y = 16
-    $g.DrawString($header[0], $titleFont, $titleBrush, 20, $y)
+    $g.DrawString($headerWrapped[0], $titleFont, $titleBrush, 20, $y)
     $y += $titleHeight
 
-    $g.DrawString($header[1], $metaFont, $metaBrush, 20, $y); $y += $metaHeight
-    $g.DrawString("Status: ", $metaFont, $metaBrush, 20, $y)
-    $g.DrawString($status, $metaFont, $statusBrush, 70, $y); $y += $metaHeight
-    $g.DrawString($header[3], $metaFont, $metaBrush, 20, $y); $y += $metaHeight
-    $g.DrawString($header[4], $metaFont, $metaBrush, 20, $y); $y += $metaHeight + 8
+    for ($h = 1; $h -lt $headerWrapped.Count; $h++) {
+        $line = $headerWrapped[$h]
+        if ($line.StartsWith("Status: ")) {
+            $g.DrawString("Status: ", $metaFont, $metaBrush, 20, $y)
+            $g.DrawString($status, $metaFont, $statusBrush, 92, $y)
+        }
+        else {
+            $g.DrawString($line, $metaFont, $metaBrush, 20, $y)
+        }
+        $y += $metaHeight
+    }
+    $y += 8
 
-    for ($i = 5; $i -lt $lines.Count; $i++) {
+    for ($i = $headerWrapped.Count; $i -lt $lines.Count; $i++) {
         if ($y -gt ($height - 30)) { break }
         $g.DrawString($lines[$i], $font, $bodyBrush, 20, $y)
         $y += $lineHeight
@@ -123,7 +209,8 @@ function Capture-Screenshot {
     param(
         [Parameter(Mandatory = $true)][string]$FileName,
         [Parameter(Mandatory = $true)][string]$Title,
-        [Parameter(Mandatory = $true)][string]$Command
+        [Parameter(Mandatory = $true)][string]$Command,
+        [string]$DisplayCommand = $Command
     )
 
     Write-Host "[CAPTURE] $FileName - $Title" -ForegroundColor Cyan
@@ -145,7 +232,9 @@ function Capture-Screenshot {
         $output = "(sem saída)"
     }
 
-    New-TextScreenshot -OutputPath $FileName -Title $Title -Command $Command -Body $output -Succeeded $ok
+    $normalized = Normalize-CommandOutput -RawOutput $output
+
+    New-TextScreenshot -OutputPath $FileName -Title $Title -Command $Command -DisplayCommand $DisplayCommand -Body $normalized -Succeeded $ok
 }
 
 Assert-Command -Name kubectl
@@ -165,13 +254,18 @@ $captures = @(
     @{ File = "09-nfs-shared-content.png"; Title = "NFS compartilhado entre réplicas"; Command = "kubectl get pods -n storage-lab -l app=nginx-nfs-demo; echo '-----'; kubectl exec -n storage-lab deployment/nginx-nfs-demo -- cat /usr/share/nginx/html/index.html" },
     @{ File = "10-configmap-volume.png"; Title = "ConfigMap montado em volume"; Command = "kubectl exec -n storage-lab-config pod-configmap-volume-demo -- ls -l /etc/config; echo '-----'; kubectl exec -n storage-lab-config pod-configmap-volume-demo -- cat /etc/config/app.properties" },
     @{ File = "11-secret-volume.png"; Title = "Secret montado em volume"; Command = "kubectl exec -n storage-lab-config pod-secret-volume-demo -- ls -l /etc/secret; echo '-----'; kubectl exec -n storage-lab-config pod-secret-volume-demo -- cat /etc/secret/username; echo '-----'; kubectl exec -n storage-lab-config pod-secret-volume-demo -- cat /etc/secret/password" },
-    @{ File = "12-scripts-apply-check-cleanup.png"; Title = "execução scripts PowerShell"; Command = "Write-Output 'Comando sugerido para evidência:'; Write-Output 'Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass'; Write-Output '.\\scripts\\apply-all.ps1'; Write-Output '.\\scripts\\check-resources.ps1'; Write-Output '.\\scripts\\cleanup-all.ps1'" }
+    @{ File = "12-scripts-apply-check-cleanup.png"; Title = "execução scripts PowerShell"; DisplayCommand = "scripts PowerShell (apply/check/cleanup)"; Command = "Write-Output 'Comando sugerido para evidência:'; Write-Output ''; Write-Output 'Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass'; Write-Output '.\\scripts\\apply-all.ps1'; Write-Output '.\\scripts\\check-resources.ps1'; Write-Output '.\\scripts\\cleanup-all.ps1'; Write-Output ''; Write-Output 'No CMD:'; Write-Output 'powershell -ExecutionPolicy Bypass -File .\\scripts\\check-resources.ps1'" }
 )
 
 Write-Host "[INFO] Gerando screenshots em: $screenshotsDir" -ForegroundColor Yellow
 foreach ($c in $captures) {
     $path = Join-Path $screenshotsDir $c.File
-    Capture-Screenshot -FileName $path -Title $c.Title -Command $c.Command
+    if ($c.ContainsKey("DisplayCommand")) {
+        Capture-Screenshot -FileName $path -Title $c.Title -Command $c.Command -DisplayCommand $c.DisplayCommand
+    }
+    else {
+        Capture-Screenshot -FileName $path -Title $c.Title -Command $c.Command
+    }
 }
 
 Write-Host "[OK] Capturas finalizadas." -ForegroundColor Green
