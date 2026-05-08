@@ -434,6 +434,44 @@ kubectl describe pv pv-hostpath-demo
 kubectl get pods -A
 ```
 
+### Galeria de prints
+
+#### 1) Nodes do cluster
+![Nodes do cluster](./screenshots/01-kubectl-get-nodes.png)
+
+#### 2) PersistentVolumes
+![PersistentVolumes](./screenshots/02-kubectl-get-pv.png)
+
+#### 3) PersistentVolumeClaims
+![PersistentVolumeClaims](./screenshots/03-kubectl-get-pvc-all.png)
+
+#### 4) StorageClass disponível
+![StorageClass](./screenshots/04-kubectl-get-storageclass.png)
+
+#### 5) PVC validado
+![Describe PVC sucesso](./screenshots/05-describe-pvc-success.png)
+
+#### 6) Erro controlado de PVC
+![Describe PVC erro controlado](./screenshots/06-describe-pvc-error.png)
+
+#### 7) Teste do emptyDir
+![Logs emptyDir](./screenshots/07-emptydir-logs.png)
+
+#### 8) Teste do hostPath
+![HostPath HTTP](./screenshots/08-hostpath-http.png)
+
+#### 9) Teste do NFS compartilhado
+![NFS compartilhado](./screenshots/09-nfs-shared-content.png)
+
+#### 10) ConfigMap como volume
+![ConfigMap volume](./screenshots/10-configmap-volume.png)
+
+#### 11) Secret como volume
+![Secret volume](./screenshots/11-secret-volume.png)
+
+#### 12) Execução dos scripts PowerShell
+![Scripts PowerShell](./screenshots/12-scripts-apply-check-cleanup.png)
+
 ## Como publicar este projeto no GitHub
 
 Os comandos abaixo são compatíveis com **Windows 11** em **CMD** ou **PowerShell**.
