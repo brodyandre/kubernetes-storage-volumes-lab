@@ -1,0 +1,16 @@
+# PVC de teste 01 para consumir 1Gi da quota total de storage.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-quota-01
+  namespace: storage-lab-quota
+  labels:
+    app.kubernetes.io/name: kubernetes-storage-volumes-lab
+    app.kubernetes.io/component: resourcequota-storage-lab
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+

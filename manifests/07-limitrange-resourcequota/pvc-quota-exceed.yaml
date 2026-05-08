@@ -1,0 +1,19 @@
+# PVC de teste que deve falhar propositalmente.
+# Após pvc-quota-01 e pvc-quota-02, esta criação excede:
+# - quantidade máxima de PVCs (2)
+# - e também ultrapassa requests.storage total de 2Gi
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-quota-exceed
+  namespace: storage-lab-quota
+  labels:
+    app.kubernetes.io/name: kubernetes-storage-volumes-lab
+    app.kubernetes.io/component: resourcequota-storage-lab
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Mi
+

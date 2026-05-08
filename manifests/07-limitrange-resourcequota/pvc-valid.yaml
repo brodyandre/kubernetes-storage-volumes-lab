@@ -1,0 +1,16 @@
+# PVC válido: solicitação dentro do intervalo permitido pelo LimitRange (100Mi a 1Gi).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-valid
+  namespace: storage-lab-quota
+  labels:
+    app.kubernetes.io/name: kubernetes-storage-volumes-lab
+    app.kubernetes.io/component: limitrange-storage-lab
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Mi
+

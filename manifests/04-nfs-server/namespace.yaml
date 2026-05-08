@@ -1,0 +1,8 @@
+# Namespace padrão dos laboratórios de storage deste projeto.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: storage-lab
+  labels:
+    app.kubernetes.io/name: kubernetes-storage-volumes-lab
+    app.kubernetes.io/component: storage-lab-core

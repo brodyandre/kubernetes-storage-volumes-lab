@@ -1,0 +1,67 @@
+# Pod de laboratório para demonstrar hostPath com NGINX.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hostpath-demo
+  namespace: storage-lab
+  labels:
+    app: hostpath-demo
+    app.kubernetes.io/name: kubernetes-storage-volumes-lab
+    app.kubernetes.io/component: hostpath-lab
+spec:
+  # initContainer executa antes do NGINX e prepara conteúdo HTML no volume hostPath.
+  initContainers:
+    - name: init-html
+      image: busybox:1.36.1
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          set -e
+          mkdir -p /workdir
+          if [ ! -f /workdir/index.html ]; then
+            cat > /workdir/index.html << 'EOF'
+          <!doctype html>
+          <html>
+          <head><meta charset="utf-8"><title>HostPath Lab</title></head>
+          <body>
+            <h1>Laboratório hostPath - Kubernetes Storage</h1>
+            <p>Arquivo criado pelo initContainer.</p>
+          </body>
+          </html>
+          EOF
+          fi
+          echo "$(date) - initContainer executado" >> /workdir/history.log
+      volumeMounts:
+        - name: hostpath-volume
+          mountPath: /workdir
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+  containers:
+    # NGINX serve os arquivos do diretório padrão /usr/share/nginx/html.
+    - name: nginx
+      image: nginx:1.27.5
+      ports:
+        - containerPort: 80
+          name: http
+      volumeMounts:
+        - name: hostpath-volume
+          mountPath: /usr/share/nginx/html
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+  # hostPath aponta para o filesystem do nó Kubernetes (Linux interno),
+  # não diretamente para C:\ do Windows.
+  volumes:
+    - name: hostpath-volume
+      hostPath:
+        path: /tmp/k8s-hostpath-demo
+        type: DirectoryOrCreate

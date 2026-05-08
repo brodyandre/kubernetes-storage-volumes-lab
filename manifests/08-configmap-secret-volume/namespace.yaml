@@ -1,0 +1,8 @@
+# Namespace dedicado ao laboratório de ConfigMap como volume.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: storage-lab-config
+  labels:
+    app.kubernetes.io/name: kubernetes-storage-volumes-lab
+    app.kubernetes.io/component: storage-lab-config

@@ -1,0 +1,17 @@
+# ResourceQuota para controlar o consumo total de storage no namespace.
+# Limita:
+# - total de requests.storage em PVCs para 2Gi
+# - quantidade total de PVCs para 2
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: storage-resource-quota
+  namespace: storage-lab-quota
+  labels:
+    app.kubernetes.io/name: kubernetes-storage-volumes-lab
+    app.kubernetes.io/component: resourcequota-storage-lab
+spec:
+  hard:
+    requests.storage: 2Gi
+    persistentvolumeclaims: "2"
+

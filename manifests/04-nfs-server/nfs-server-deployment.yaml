@@ -1,0 +1,51 @@
+# Deployment do servidor NFS para laboratório local.
+# Este servidor roda dentro do cluster Kubernetes local e exporta /exports via NFSv4 (porta 2049).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nfs-server
+  namespace: storage-lab
+  labels:
+    app: nfs-server
+    app.kubernetes.io/name: kubernetes-storage-volumes-lab
+    app.kubernetes.io/component: nfs-server-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nfs-server
+  template:
+    metadata:
+      labels:
+        app: nfs-server
+        app.kubernetes.io/name: kubernetes-storage-volumes-lab
+        app.kubernetes.io/component: nfs-server-lab
+    spec:
+      containers:
+        - name: nfs-server
+          image: itsthenetwork/nfs-server-alpine:latest
+          # A imagem requer privilégios para iniciar serviços NFS no container.
+          securityContext:
+            privileged: true
+          env:
+            - name: SHARED_DIRECTORY
+              value: /exports
+          ports:
+            - name: nfs
+              containerPort: 2049
+              protocol: TCP
+          volumeMounts:
+            - name: nfs-data
+              mountPath: /exports
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+      volumes:
+        # Volume temporário para estudo.
+        # Para persistência real entre recriações do Pod, usar PV/PVC no lab seguinte.
+        - name: nfs-data
+          emptyDir: {}

@@ -1,0 +1,43 @@
+# Deployment com 2 réplicas NGINX consumindo o mesmo PVC NFS.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-nfs-demo
+  namespace: storage-lab
+  labels:
+    app: nginx-nfs-demo
+    app.kubernetes.io/name: kubernetes-storage-volumes-lab
+    app.kubernetes.io/component: nfs-pv-pvc-lab
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx-nfs-demo
+  template:
+    metadata:
+      labels:
+        app: nginx-nfs-demo
+        app.kubernetes.io/name: kubernetes-storage-volumes-lab
+        app.kubernetes.io/component: nfs-pv-pvc-lab
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27.5
+          ports:
+            - containerPort: 80
+              name: http
+          volumeMounts:
+            # NGINX servirá arquivos diretamente do volume compartilhado.
+            - name: nfs-content
+              mountPath: /usr/share/nginx/html
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+      volumes:
+        - name: nfs-content
+          persistentVolumeClaim:
+            claimName: pvc-nfs-demo

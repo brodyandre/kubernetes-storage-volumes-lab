@@ -1,0 +1,17 @@
+# PVC para provisionamento dinâmico usando a StorageClass "local-path".
+# No cluster k3d/k3s, local-path é a classe padrão comum (rancher.io/local-path).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-dynamic-demo
+  namespace: storage-lab
+  labels:
+    app.kubernetes.io/name: kubernetes-storage-volumes-lab
+    app.kubernetes.io/component: storageclass-lab
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 500Mi

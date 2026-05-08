@@ -1,0 +1,36 @@
+# Pod que consome o PVC dinâmico para validar provisionamento automático.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-dynamic-pvc-demo
+  namespace: storage-lab
+  labels:
+    app: pod-dynamic-pvc-demo
+    app.kubernetes.io/name: kubernetes-storage-volumes-lab
+    app.kubernetes.io/component: storageclass-lab
+spec:
+  containers:
+    - name: app
+      image: busybox:1.36.1
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          echo "Volume provisionado dinamicamente em $(date)" > /data/dynamic.txt;
+          while true; do
+            echo "heartbeat $(date)" >> /data/dynamic.txt;
+            sleep 60;
+          done
+      volumeMounts:
+        - name: dynamic-storage
+          mountPath: /data
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+  volumes:
+    - name: dynamic-storage
+      persistentVolumeClaim:
+        claimName: pvc-dynamic-demo

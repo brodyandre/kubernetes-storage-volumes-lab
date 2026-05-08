@@ -1,0 +1,17 @@
+# PVC inválido: solicita 2Gi, acima do máximo de 1Gi definido no LimitRange.
+# Este recurso deve falhar propositalmente para demonstrar a política.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-invalid
+  namespace: storage-lab-quota
+  labels:
+    app.kubernetes.io/name: kubernetes-storage-volumes-lab
+    app.kubernetes.io/component: limitrange-storage-lab
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+

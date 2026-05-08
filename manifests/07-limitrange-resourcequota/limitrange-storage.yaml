@@ -1,0 +1,13 @@
+# LimitRange focado em PVC para controlar tamanho mínimo e máximo de solicitações.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: storage-limit-range
+  namespace: storage-lab-quota
+spec:
+  limits:
+    - type: PersistentVolumeClaim
+      min:
+        storage: 100Mi
+      max:
+        storage: 1Gi

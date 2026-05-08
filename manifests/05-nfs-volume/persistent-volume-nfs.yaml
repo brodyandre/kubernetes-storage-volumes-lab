@@ -1,0 +1,23 @@
+# PersistentVolume NFS para laboratório local.
+# Antes de aplicar:
+# - substitua NFS_SERVER_CLUSTER_IP manualmente, ou
+# - gere manifests/05-nfs-volume/persistent-volume-nfs.generated.yaml via scripts/prepare-nfs-pv.ps1
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-nfs-demo
+  labels:
+    app.kubernetes.io/name: kubernetes-storage-volumes-lab
+    app.kubernetes.io/component: nfs-pv-pvc-lab
+spec:
+  capacity:
+    storage: 1Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-manual
+  nfs:
+    # Substitua este placeholder pelo ClusterIP do Service nfs-server no namespace storage-lab.
+    server: NFS_SERVER_CLUSTER_IP
+    path: /exports

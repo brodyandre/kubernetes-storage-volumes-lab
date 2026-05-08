@@ -1,0 +1,17 @@
+# PersistentVolumeClaim (PVC) que solicita parte da capacidade do PV.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-hostpath-demo
+  namespace: storage-lab
+  labels:
+    app.kubernetes.io/name: kubernetes-storage-volumes-lab
+    app.kubernetes.io/component: pv-pvc-lab
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: manual
+  resources:
+    requests:
+      storage: 500Mi
+

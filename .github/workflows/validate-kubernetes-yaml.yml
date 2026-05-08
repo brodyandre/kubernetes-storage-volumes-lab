@@ -1,0 +1,45 @@
+name: Validate Kubernetes YAML
+
+on:
+  # Executa em push para a branch principal.
+  push:
+    branches:
+      - main
+  # Executa em pull requests direcionados para a branch principal.
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+    # Runner Linux do GitHub Actions (não depende do ambiente local Windows).
+    runs-on: ubuntu-latest
+
+    steps:
+      # Faz checkout do código do repositório.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Lista os arquivos YAML encontrados em manifests para facilitar troubleshooting.
+      - name: List YAML files in manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          find manifests -type f \( -name "*.yaml" -o -name "*.yml" \) | sort
+
+      # Validação de sintaxe YAML (estrutura/indentação/chaves duplicadas etc.).
+      - name: Validate YAML syntax with yamllint
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --upgrade pip
+          python3 -m pip install yamllint
+          yamllint -d "{extends: default, rules: {document-start: disable, line-length: disable}}" manifests
+
+      # Validação de manifests Kubernetes por schema, sem depender de cluster local.
+      - name: Validate Kubernetes manifests with kubeconform
+        uses: docker://ghcr.io/yannh/kubeconform:latest
+        with:
+          entrypoint: /kubeconform
+          args: -summary -strict -ignore-missing-schemas manifests
+

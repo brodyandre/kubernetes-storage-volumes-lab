@@ -1,0 +1,139 @@
+# ==========================================
+# .gitignore - kubernetes-storage-volumes-lab
+# Ambiente: Windows 11 + VS Code + Docker Desktop + k3d + kubectl
+# ==========================================
+
+# ==========================================
+# Sistema operacional
+# ==========================================
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+~$*
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# ==========================================
+# Logs, temporários, cache e backup
+# ==========================================
+
+*.log
+*.out
+*.err
+logs/
+log/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+*~
+*.swp
+*.swo
+
+.cache/
+tmp/
+temp/
+__pycache__/
+*.pyc
+*.pyo
+
+# ==========================================
+# Variáveis de ambiente e credenciais
+# ==========================================
+
+# Arquivos .env
+.env
+.env.*
+!.env.example
+!.env.template
+
+# Credenciais locais comuns
+credentials
+credentials.*
+*.credentials
+
+# Chaves/certificados (segredos reais)
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+*.jks
+*.kdb
+*.ovpn
+*.enc
+*.age
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+
+# Pastas comuns de segredos locais
+secrets/
+secret/
+private/
+
+# ==========================================
+# Kubernetes e kubeconfig local
+# ==========================================
+
+kubeconfig
+kubeconfig.*
+*.kubeconfig
+.kube/
+
+# ==========================================
+# Arquivos gerados automaticamente
+# ==========================================
+
+# Artefatos YAML gerados localmente
+*.generated.yaml
+manifests/05-nfs-volume/persistent-volume-nfs.generated.yaml
+
+# Pastas de build/cache comuns
+dist/
+build/
+coverage/
+node_modules/
+
+# ==========================================
+# VS Code e IDEs
+# ==========================================
+
+# Mantém apenas configurações úteis do workspace
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# Históricos e arquivos temporários de IDE
+.history/
+.idea/
+*.code-workspace
+
+# ==========================================
+# Observação importante
+# ==========================================
+#
+# Não ignoramos manifests didáticos do projeto, incluindo os exemplos
+# de ConfigMap/Secret em manifests/08-configmap-secret-volume.
+# Esses arquivos são educacionais e não devem conter credenciais reais.

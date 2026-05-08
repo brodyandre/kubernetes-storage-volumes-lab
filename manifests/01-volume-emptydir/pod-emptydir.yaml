@@ -1,0 +1,60 @@
+# Pod de demonstração com dois containers compartilhando o mesmo emptyDir.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emptydir-demo
+  namespace: storage-lab
+  labels:
+    app: emptydir-demo
+    app.kubernetes.io/name: kubernetes-storage-volumes-lab
+    app.kubernetes.io/component: emptydir-lab
+spec:
+  containers:
+    # Container escritor: adiciona continuamente timestamp em /data/log.txt.
+    - name: writer
+      image: busybox:1.36.1
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          while true; do
+            echo "$(date) - writer" | tee -a /data/log.txt;
+            sleep 5;
+          done
+      volumeMounts:
+        # Mesmo volume compartilhado com o container reader.
+        - name: shared-emptydir
+          mountPath: /data
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+    # Container leitor: lê continuamente o conteúdo do arquivo produzido pelo writer.
+    - name: reader
+      image: busybox:1.36.1
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          while true; do
+            echo "----- reader $(date) -----";
+            cat /data/log.txt 2>/dev/null || echo "log ainda não criado";
+            sleep 5;
+          done
+      volumeMounts:
+        - name: shared-emptydir
+          mountPath: /data
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+  # Definição do volume temporário emptyDir.
+  # Ele existe enquanto o Pod existir no nó.
+  volumes:
+    - name: shared-emptydir
+      emptyDir:
+        sizeLimit: 200Mi

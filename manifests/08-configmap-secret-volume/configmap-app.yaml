@@ -1,0 +1,22 @@
+# ConfigMap com arquivos de configuração da aplicação.
+# Cada chave em data vira um arquivo quando montado como volume.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: storage-lab-config
+  labels:
+    app.kubernetes.io/name: kubernetes-storage-volumes-lab
+    app.kubernetes.io/component: configmap-volume-lab
+data:
+  app.properties: |
+    app.name=demo-configmap-volume
+    app.environment=local
+    app.feature.enabled=true
+  config.json: |
+    {
+      "serviceName": "configmap-volume-demo",
+      "logLevel": "info",
+      "retry": 3
+    }
+

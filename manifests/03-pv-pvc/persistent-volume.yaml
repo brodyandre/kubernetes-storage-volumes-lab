@@ -1,0 +1,21 @@
+# PersistentVolume (PV) de laboratório usando hostPath.
+# Observação: hostPath é recomendado apenas para ambiente local/single-node.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-hostpath-demo
+  labels:
+    app.kubernetes.io/name: kubernetes-storage-volumes-lab
+    app.kubernetes.io/component: pv-pvc-lab
+spec:
+  capacity:
+    storage: 1Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: manual
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    # Caminho no nó Linux interno do cluster local (k3d/k3s).
+    path: /tmp/k8s-pv-demo
+    type: DirectoryOrCreate

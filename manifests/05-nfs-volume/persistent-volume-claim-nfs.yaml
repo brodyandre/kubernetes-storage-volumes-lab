@@ -1,0 +1,17 @@
+# PersistentVolumeClaim que solicita parte do PV NFS.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-nfs-demo
+  namespace: storage-lab
+  labels:
+    app.kubernetes.io/name: kubernetes-storage-volumes-lab
+    app.kubernetes.io/component: nfs-pv-pvc-lab
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-manual
+  resources:
+    requests:
+      storage: 500Mi
+
