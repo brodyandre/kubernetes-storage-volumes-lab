@@ -117,6 +117,19 @@ function Normalize-CommandOutput {
     return (($filtered | Where-Object { $_ -ne $null }) -join "`n")
 }
 
+function Test-OutputRegex {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$Pattern
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $false
+    }
+
+    return ($Text -match $Pattern)
+}
+
 function New-TextScreenshot {
     param(
         [Parameter(Mandatory = $true)][string]$OutputPath,
@@ -248,7 +261,7 @@ function Capture-Screenshot {
         [Parameter(Mandatory = $true)][string]$Title,
         [Parameter(Mandatory = $true)][string]$Command,
         [string]$DisplayCommand = $Command,
-        [ValidateSet("success", "expected-error", "info")][string]$ExpectedOutcome = "success",
+        [ValidateSet("success", "expected-error", "expected-warning", "info")][string]$ExpectedOutcome = "success",
         [bool]$RequiresCluster = $true,
         [Parameter(Mandatory = $true)][psobject]$ClusterState
     )
@@ -297,15 +310,14 @@ function Capture-Screenshot {
                 $statusKind = if ($ok) { "success" } else { "error" }
             }
             "expected-error" {
-                if ($ok) {
-                    $statusLabel = "ATENÇÃO"
-                    $statusKind = "warning"
-                    $output = "Este laboratório esperava erro controlado, mas o comando retornou sucesso.`n`n$output"
-                }
-                else {
-                    $statusLabel = "ERRO CONTROLADO"
-                    $statusKind = "warning"
-                }
+                # Ajuste fino será feito após normalização da saída.
+                $statusLabel = if ($ok) { "ATENÇÃO" } else { "ERRO CONTROLADO" }
+                $statusKind = "warning"
+            }
+            "expected-warning" {
+                # Ajuste fino será feito após normalização da saída.
+                $statusLabel = if ($ok) { "SUCESSO" } else { "LIMITAÇÃO DE AMBIENTE" }
+                $statusKind = if ($ok) { "success" } else { "warning" }
             }
             "info" {
                 $statusLabel = "INFORMATIVO"
@@ -319,6 +331,36 @@ function Capture-Screenshot {
     }
 
     $normalized = Normalize-CommandOutput -RawOutput $output
+    $hasKubernetesError = Test-OutputRegex -Text $normalized -Pattern "(?i)\berror from server\b|\bforbidden\b|\binvalid\b|\bfailed\b"
+    $hasNfsLimitation = Test-OutputRegex -Text $normalized -Pattern "(?i)failedmount|connection refused|not supported|mountvolume\.setup failed|containercreating"
+
+    if ($ExpectedOutcome -eq "expected-error") {
+        if ($hasKubernetesError) {
+            $statusLabel = "ERRO CONTROLADO"
+            $statusKind = "warning"
+        }
+        elseif ($ok) {
+            $statusLabel = "ATENÇÃO"
+            $statusKind = "warning"
+            $normalized = "Este laboratório esperava erro controlado, mas o comando retornou sucesso.`n`n$normalized"
+        }
+    }
+    elseif ($ExpectedOutcome -eq "expected-warning") {
+        if ($hasNfsLimitation) {
+            $statusLabel = "LIMITAÇÃO DE AMBIENTE"
+            $statusKind = "warning"
+            $normalized = @(
+                "[Aviso] O comando refletiu limitação conhecida de ambiente local (ex.: suporte NFS no nó do cluster).",
+                "Resultado real mantido para documentação técnica:",
+                "",
+                $normalized
+            ) -join "`n"
+        }
+        elseif ($ok) {
+            $statusLabel = "SUCESSO"
+            $statusKind = "success"
+        }
+    }
 
     New-TextScreenshot -OutputPath $FileName -Title $Title -Command $Command -DisplayCommand $DisplayCommand -Body $normalized -StatusLabel $statusLabel -StatusKind $statusKind
 }
@@ -345,10 +387,10 @@ $captures = @(
     @{ File = "03-kubectl-get-pvc-all.png"; Title = "kubectl get pvc -A"; Command = "kubectl get pvc -A" },
     @{ File = "04-kubectl-get-storageclass.png"; Title = "kubectl get storageclass"; Command = "kubectl get storageclass" },
     @{ File = "05-describe-pvc-success.png"; Title = "describe pvc (sucesso esperado)"; Command = "kubectl describe pvc pvc-hostpath-demo -n storage-lab" },
-    @{ File = "06-describe-pvc-error.png"; Title = "describe pvc (erro controlado)"; ExpectedOutcome = "expected-error"; Command = "kubectl describe pvc pvc-invalid -n storage-lab-quota" },
+    @{ File = "06-describe-pvc-error.png"; Title = "pvc inválido (erro controlado)"; ExpectedOutcome = "expected-error"; Command = "kubectl apply -f manifests/07-limitrange-resourcequota/pvc-invalid.yaml" },
     @{ File = "07-emptydir-logs.png"; Title = "logs emptyDir writer/reader"; Command = "kubectl logs -n storage-lab pod/emptydir-demo -c writer --tail=25; echo '-----'; kubectl logs -n storage-lab pod/emptydir-demo -c reader --tail=25" },
     @{ File = "08-hostpath-http.png"; Title = "hostPath via NGINX"; Command = "kubectl exec -n storage-lab pod/hostpath-demo -- cat /usr/share/nginx/html/index.html" },
-    @{ File = "09-nfs-shared-content.png"; Title = "NFS compartilhado entre réplicas"; Command = "kubectl get pods -n storage-lab -l app=nginx-nfs-demo; echo '-----'; kubectl exec -n storage-lab deployment/nginx-nfs-demo -- cat /usr/share/nginx/html/index.html" },
+    @{ File = "09-nfs-shared-content.png"; Title = "NFS compartilhado entre réplicas"; ExpectedOutcome = "expected-warning"; Command = "kubectl get pods -n storage-lab -l app=nginx-nfs-demo; echo '-----'; kubectl describe pod -n storage-lab -l app=nginx-nfs-demo | Select-String -Pattern 'FailedMount|Connection refused|Not supported|MountVolume.SetUp failed' -Context 0,1" },
     @{ File = "10-configmap-volume.png"; Title = "ConfigMap montado em volume"; Command = "kubectl exec -n storage-lab-config pod-configmap-volume-demo -- ls -l /etc/config; echo '-----'; kubectl exec -n storage-lab-config pod-configmap-volume-demo -- cat /etc/config/app.properties" },
     @{ File = "11-secret-volume.png"; Title = "Secret montado em volume"; Command = "kubectl exec -n storage-lab-config pod-secret-volume-demo -- ls -l /etc/secret; echo '-----'; kubectl exec -n storage-lab-config pod-secret-volume-demo -- cat /etc/secret/username; echo '-----'; kubectl exec -n storage-lab-config pod-secret-volume-demo -- cat /etc/secret/password" },
     @{ File = "12-scripts-apply-check-cleanup.png"; Title = "execução scripts PowerShell"; RequiresCluster = $false; DisplayCommand = "scripts PowerShell (apply/check/cleanup)"; Command = "Write-Output 'Comando sugerido para evidência:'; Write-Output ''; Write-Output 'Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass'; Write-Output '.\\scripts\\apply-all.ps1'; Write-Output '.\\scripts\\check-resources.ps1'; Write-Output '.\\scripts\\cleanup-all.ps1'; Write-Output ''; Write-Output 'No CMD:'; Write-Output 'powershell -ExecutionPolicy Bypass -File .\\scripts\\check-resources.ps1'" }

@@ -443,6 +443,7 @@ Legenda de status usada nos prints:
 
 - `SUCESSO`: comando executado com resultado esperado.
 - `ERRO CONTROLADO`: falha esperada para demonstrar política/restrição do laboratório.
+- `LIMITAÇÃO DE AMBIENTE`: resultado real de incompatibilidade do ambiente local (ex.: suporte NFS no nó).
 - `NÃO EXECUTADO`: cluster/contexto Kubernetes indisponível no momento da captura.
 
 #### Contexto 1: Saúde do cluster local (k3d)
