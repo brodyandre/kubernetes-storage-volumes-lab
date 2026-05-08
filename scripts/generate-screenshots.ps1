@@ -19,9 +19,10 @@ function New-TextScreenshot {
 
     Add-Type -AssemblyName System.Drawing
 
-    $font = New-Object System.Drawing.Font("Consolas", 12)
-    $titleFont = New-Object System.Drawing.Font("Segoe UI", 14, [System.Drawing.FontStyle]::Bold)
-    $metaFont = New-Object System.Drawing.Font("Segoe UI", 10)
+    # Fontes maiores para melhorar leitura no GitHub.
+    $font = New-Object System.Drawing.Font("Consolas", 16)
+    $titleFont = New-Object System.Drawing.Font("Segoe UI", 22, [System.Drawing.FontStyle]::Bold)
+    $metaFont = New-Object System.Drawing.Font("Segoe UI", 14)
 
     $status = if ($Succeeded) { "SUCESSO" } else { "FALHA" }
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
@@ -51,33 +52,34 @@ function New-TextScreenshot {
     $graphics = [System.Drawing.Graphics]::FromImage($dummyBitmap)
     $graphics.PageUnit = [System.Drawing.GraphicsUnit]::Pixel
 
-    $maxWidth = 1280
+    $maxWidth = 1600
     foreach ($line in $lines) {
         $size = $graphics.MeasureString($line, $font)
         $candidate = [int]([Math]::Ceiling($size.Width)) + 40
         if ($candidate -gt $maxWidth) { $maxWidth = $candidate }
     }
 
-    $lineHeight = [int]([Math]::Ceiling($font.GetHeight($graphics))) + 4
-    $titleHeight = 34
-    $metaHeight = 20
+    $lineHeight = [int]([Math]::Ceiling($font.GetHeight($graphics))) + 8
+    $titleHeight = 52
+    $metaHeight = 28
     $height = 30 + $titleHeight + ($metaHeight * 4) + 20 + ($lineHeight * ($lines.Count - 5))
-    if ($height -lt 720) { $height = 720 }
+    if ($height -lt 900) { $height = 900 }
     if ($height -gt 6000) { $height = 6000 }
 
     $bitmap = New-Object System.Drawing.Bitmap $maxWidth, $height
     $g = [System.Drawing.Graphics]::FromImage($bitmap)
-    $g.Clear([System.Drawing.Color]::FromArgb(248, 249, 251))
+    # Tema escuro para melhor contraste no portfólio.
+    $g.Clear([System.Drawing.Color]::FromArgb(17, 24, 39))
     $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::ClearTypeGridFit
 
-    $titleBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(33, 37, 41))
-    $metaBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(73, 80, 87))
-    $bodyBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(17, 24, 39))
+    $titleBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(241, 245, 249))
+    $metaBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(203, 213, 225))
+    $bodyBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(226, 232, 240))
     $statusColor = if ($Succeeded) {
-        [System.Drawing.Color]::FromArgb(33, 120, 58)
+        [System.Drawing.Color]::FromArgb(74, 222, 128)
     }
     else {
-        [System.Drawing.Color]::FromArgb(185, 28, 28)
+        [System.Drawing.Color]::FromArgb(248, 113, 113)
     }
     $statusBrush = New-Object System.Drawing.SolidBrush($statusColor)
 

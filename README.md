@@ -434,43 +434,75 @@ kubectl describe pv pv-hostpath-demo
 kubectl get pods -A
 ```
 
-### Galeria de prints
+### Evidências por contexto
 
-#### 1) Nodes do cluster
+#### Contexto 1: Saúde do cluster local (k3d)
+
+Comandos de referência:
+
+```powershell
+kubectl get nodes
+kubectl get pods -A
+kubectl get storageclass
+```
+
 ![Nodes do cluster](./screenshots/01-kubectl-get-nodes.png)
+![StorageClass disponível](./screenshots/04-kubectl-get-storageclass.png)
 
-#### 2) PersistentVolumes
+#### Contexto 2: Persistência com PV/PVC
+
+Comandos de referência:
+
+```powershell
+kubectl get pv
+kubectl get pvc -A
+kubectl describe pvc pvc-hostpath-demo -n storage-lab
+```
+
 ![PersistentVolumes](./screenshots/02-kubectl-get-pv.png)
-
-#### 3) PersistentVolumeClaims
 ![PersistentVolumeClaims](./screenshots/03-kubectl-get-pvc-all.png)
+![PVC validado](./screenshots/05-describe-pvc-success.png)
 
-#### 4) StorageClass disponível
-![StorageClass](./screenshots/04-kubectl-get-storageclass.png)
+#### Contexto 3: Laboratórios de volume (emptyDir, hostPath, NFS)
 
-#### 5) PVC validado
-![Describe PVC sucesso](./screenshots/05-describe-pvc-success.png)
+Comandos de referência:
 
-#### 6) Erro controlado de PVC
-![Describe PVC erro controlado](./screenshots/06-describe-pvc-error.png)
+```powershell
+kubectl logs -n storage-lab pod/emptydir-demo -c reader
+kubectl describe pod hostpath-demo -n storage-lab
+kubectl get pods -n storage-lab -l app=nginx-nfs-demo
+```
 
-#### 7) Teste do emptyDir
-![Logs emptyDir](./screenshots/07-emptydir-logs.png)
+![Teste do emptyDir](./screenshots/07-emptydir-logs.png)
+![Teste do hostPath](./screenshots/08-hostpath-http.png)
+![Teste do NFS compartilhado](./screenshots/09-nfs-shared-content.png)
 
-#### 8) Teste do hostPath
-![HostPath HTTP](./screenshots/08-hostpath-http.png)
+#### Contexto 4: Configuração e segurança de aplicação
 
-#### 9) Teste do NFS compartilhado
-![NFS compartilhado](./screenshots/09-nfs-shared-content.png)
+Comandos de referência:
 
-#### 10) ConfigMap como volume
-![ConfigMap volume](./screenshots/10-configmap-volume.png)
+```powershell
+kubectl exec -n storage-lab-config pod-configmap-volume-demo -- ls -l /etc/config
+kubectl exec -n storage-lab-config pod-secret-volume-demo -- ls -l /etc/secret
+kubectl describe limitrange storage-limit-range -n storage-lab-quota
+kubectl describe resourcequota storage-resource-quota -n storage-lab-quota
+```
 
-#### 11) Secret como volume
-![Secret volume](./screenshots/11-secret-volume.png)
+![ConfigMap como volume](./screenshots/10-configmap-volume.png)
+![Secret como volume](./screenshots/11-secret-volume.png)
+![Erro controlado de quota/limite](./screenshots/06-describe-pvc-error.png)
 
-#### 12) Execução dos scripts PowerShell
-![Scripts PowerShell](./screenshots/12-scripts-apply-check-cleanup.png)
+#### Contexto 5: Automação com PowerShell
+
+Comandos de referência:
+
+```powershell
+.\scripts\apply-all.ps1
+.\scripts\check-resources.ps1
+.\scripts\cleanup-all.ps1
+```
+
+![Execução dos scripts PowerShell](./screenshots/12-scripts-apply-check-cleanup.png)
 
 ## Como publicar este projeto no GitHub
 
