@@ -412,12 +412,12 @@ Use a tabela abaixo para orientar as capturas de tela que comprovam domínio té
 | PersistentVolumes | `kubectl get pv` | Volumes persistentes criados no cluster |
 | PersistentVolumeClaims | `kubectl get pvc -A` | Claims solicitando storage |
 | `emptyDir` | `kubectl logs -n storage-lab pod/emptydir-demo -c reader` | Containers compartilhando volume temporário |
-| `hostPath` | `kubectl describe pod hostpath-demo -n storage-lab` | Volume montado a partir do nó Kubernetes |
-| PVC com `hostPath` | `kubectl exec -n storage-lab pod-pvc-demo -- cat /data/message.txt` | Pod consumindo PVC |
+| `hostPath` | `kubectl exec -n storage-lab pod/hostpath-demo -- cat /usr/share/nginx/html/index.html` | Conteúdo servido pelo volume `hostPath` |
+| PVC com `hostPath` | `kubectl describe pvc pvc-hostpath-demo -n storage-lab` | PVC `Bound` e associado ao PV manual |
 | StorageClass `local-path` | `kubectl describe storageclass local-path` | Provisionamento dinâmico local |
 | ConfigMap como volume | `kubectl exec -n storage-lab-config pod-configmap-volume-demo -- ls -l /etc/config` | ConfigMap montado como arquivos |
 | Secret como volume | `kubectl exec -n storage-lab-config pod-secret-volume-demo -- ls -l /etc/secret` | Secret montado como arquivos |
-| LimitRange | `kubectl describe limitrange storage-limit-range -n storage-lab-quota` | Limites mínimos e máximos para PVC |
+| LimitRange | `kubectl apply -f manifests/07-limitrange-resourcequota/pvc-invalid.yaml` | Erro controlado ao solicitar `2Gi` acima do limite de PVC |
 | ResourceQuota | `kubectl describe resourcequota storage-resource-quota -n storage-lab-quota` | Controle de consumo total de storage no namespace |
 
 Arquivos de evidência são salvos em [`./screenshots`](./screenshots), seguindo o padrão `01-...png` até `12-...png`.
@@ -479,13 +479,14 @@ Comandos de referência:
 
 ```powershell
 kubectl logs -n storage-lab pod/emptydir-demo -c reader
-kubectl describe pod hostpath-demo -n storage-lab
+kubectl exec -n storage-lab pod/hostpath-demo -- cat /usr/share/nginx/html/index.html
 kubectl get pods -n storage-lab -l app=nginx-nfs-demo
+kubectl describe pod -n storage-lab -l app=nginx-nfs-demo
 ```
 
 [![Teste do emptyDir](./screenshots/07-emptydir-logs.png)](./screenshots/07-emptydir-logs.png)
 [![Teste do hostPath](./screenshots/08-hostpath-http.png)](./screenshots/08-hostpath-http.png)
-[![Teste do NFS compartilhado](./screenshots/09-nfs-shared-content.png)](./screenshots/09-nfs-shared-content.png)
+[![Teste do NFS (limitação de ambiente local)](./screenshots/09-nfs-shared-content.png)](./screenshots/09-nfs-shared-content.png)
 
 #### Contexto 4: Configuração e segurança de aplicação
 
@@ -494,7 +495,7 @@ Comandos de referência:
 ```powershell
 kubectl exec -n storage-lab-config pod-configmap-volume-demo -- ls -l /etc/config
 kubectl exec -n storage-lab-config pod-secret-volume-demo -- ls -l /etc/secret
-kubectl describe limitrange storage-limit-range -n storage-lab-quota
+kubectl apply -f manifests/07-limitrange-resourcequota/pvc-invalid.yaml
 kubectl describe resourcequota storage-resource-quota -n storage-lab-quota
 ```
 
