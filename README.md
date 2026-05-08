@@ -439,6 +439,12 @@ kubectl get pods -A
 > Dica de visualização: os prints estão em **tema escuro** e com **fonte ampliada**.  
 > Clique em cada imagem para abrir em tamanho real. Em telas menores, use a rolagem horizontal do navegador ao visualizar a imagem ampliada.
 
+Legenda de status usada nos prints:
+
+- `SUCESSO`: comando executado com resultado esperado.
+- `ERRO CONTROLADO`: falha esperada para demonstrar política/restrição do laboratório.
+- `NÃO EXECUTADO`: cluster/contexto Kubernetes indisponível no momento da captura.
+
 #### Contexto 1: Saúde do cluster local (k3d)
 
 Comandos de referência:

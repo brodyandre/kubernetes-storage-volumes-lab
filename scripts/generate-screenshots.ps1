@@ -8,6 +8,41 @@ function Assert-Command {
     }
 }
 
+function Get-ClusterState {
+    $context = ""
+    $hasContext = $false
+    $isReachable = $false
+
+    try {
+        $ctxRaw = (kubectl config current-context 2>$null)
+        $context = if ($null -eq $ctxRaw) { "" } else { [string]$ctxRaw }
+        $context = $context.Trim()
+        $hasContext = -not [string]::IsNullOrWhiteSpace($context)
+    }
+    catch {
+        $hasContext = $false
+    }
+
+    if ($hasContext) {
+        try {
+            $ready = kubectl get --raw='/readyz' 2>$null
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace(($ready | Out-String))) {
+                $isReachable = $true
+            }
+        }
+        catch {
+            $isReachable = $false
+        }
+    }
+
+    [pscustomobject]@{
+        Context     = $context
+        HasContext  = $hasContext
+        IsReachable = $isReachable
+        Connected   = ($hasContext -and $isReachable)
+    }
+}
+
 function Wrap-TextLine {
     param(
         [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Text,
@@ -89,7 +124,8 @@ function New-TextScreenshot {
         [Parameter(Mandatory = $true)][string]$Command,
         [string]$DisplayCommand = $Command,
         [Parameter(Mandatory = $true)][object]$Body,
-        [Parameter(Mandatory = $true)][bool]$Succeeded
+        [Parameter(Mandatory = $true)][string]$StatusLabel,
+        [Parameter(Mandatory = $true)][ValidateSet("success", "error", "warning", "info", "neutral")][string]$StatusKind
     )
 
     Add-Type -AssemblyName System.Drawing
@@ -99,7 +135,7 @@ function New-TextScreenshot {
     $titleFont = New-Object System.Drawing.Font("Segoe UI", 26, [System.Drawing.FontStyle]::Bold)
     $metaFont = New-Object System.Drawing.Font("Segoe UI", 16)
 
-    $status = if ($Succeeded) { "SUCESSO" } else { "FALHA" }
+    $status = $StatusLabel
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $header = @(
         "Kubernetes Storage Volumes Lab - Evidência",
@@ -154,11 +190,12 @@ function New-TextScreenshot {
     $titleBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(248, 250, 252))
     $metaBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(203, 213, 225))
     $bodyBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(241, 245, 249))
-    $statusColor = if ($Succeeded) {
-        [System.Drawing.Color]::FromArgb(34, 197, 94)
-    }
-    else {
-        [System.Drawing.Color]::FromArgb(239, 68, 68)
+    $statusColor = switch ($StatusKind) {
+        "success" { [System.Drawing.Color]::FromArgb(34, 197, 94) }
+        "error" { [System.Drawing.Color]::FromArgb(239, 68, 68) }
+        "warning" { [System.Drawing.Color]::FromArgb(250, 204, 21) }
+        "info" { [System.Drawing.Color]::FromArgb(56, 189, 248) }
+        default { [System.Drawing.Color]::FromArgb(148, 163, 184) }
     }
     $statusBrush = New-Object System.Drawing.SolidBrush($statusColor)
 
@@ -210,22 +247,71 @@ function Capture-Screenshot {
         [Parameter(Mandatory = $true)][string]$FileName,
         [Parameter(Mandatory = $true)][string]$Title,
         [Parameter(Mandatory = $true)][string]$Command,
-        [string]$DisplayCommand = $Command
+        [string]$DisplayCommand = $Command,
+        [ValidateSet("success", "expected-error", "info")][string]$ExpectedOutcome = "success",
+        [bool]$RequiresCluster = $true,
+        [Parameter(Mandatory = $true)][psobject]$ClusterState
     )
 
     Write-Host "[CAPTURE] $FileName - $Title" -ForegroundColor Cyan
 
     $output = ""
-    $ok = $true
-    try {
-        $outputObj = Invoke-Expression "$Command 2>&1"
-        $output = ($outputObj | Out-String)
-        if ($LASTEXITCODE -ne 0) { $ok = $false }
+    $ok = $false
+    $statusLabel = "FALHA"
+    $statusKind = "error"
+
+    if ($RequiresCluster -and -not $ClusterState.Connected) {
+        $contextLine = if ($ClusterState.HasContext) {
+            "Contexto atual: '$($ClusterState.Context)' (API indisponível)."
+        }
+        else {
+            "Nenhum contexto Kubernetes ativo encontrado."
+        }
+
+        $output = @(
+            "Comando não executado para evitar evidência incoerente.",
+            $contextLine,
+            "Conecte o cluster e regenere os prints:",
+            "kubectl config use-context k3d-meucluster",
+            ".\scripts\generate-screenshots.ps1"
+        ) -join "`n"
+
+        $statusLabel = "NÃO EXECUTADO"
+        $statusKind = "neutral"
     }
-    catch {
-        $ok = $false
-        $errorText = $_.Exception.Message
-        $output = "Erro ao executar comando.`n$errorText`n`nDetalhes:`n$($_ | Out-String)"
+    else {
+        try {
+            $outputObj = Invoke-Expression "$Command 2>&1"
+            $output = ($outputObj | Out-String)
+            $ok = $?
+        }
+        catch {
+            $ok = $false
+            $errorText = $_.Exception.Message
+            $output = "Erro ao executar comando.`n$errorText`n`nDetalhes:`n$($_ | Out-String)"
+        }
+
+        switch ($ExpectedOutcome) {
+            "success" {
+                $statusLabel = if ($ok) { "SUCESSO" } else { "FALHA" }
+                $statusKind = if ($ok) { "success" } else { "error" }
+            }
+            "expected-error" {
+                if ($ok) {
+                    $statusLabel = "ATENÇÃO"
+                    $statusKind = "warning"
+                    $output = "Este laboratório esperava erro controlado, mas o comando retornou sucesso.`n`n$output"
+                }
+                else {
+                    $statusLabel = "ERRO CONTROLADO"
+                    $statusKind = "warning"
+                }
+            }
+            "info" {
+                $statusLabel = "INFORMATIVO"
+                $statusKind = "info"
+            }
+        }
     }
 
     if ([string]::IsNullOrWhiteSpace($output)) {
@@ -234,13 +320,24 @@ function Capture-Screenshot {
 
     $normalized = Normalize-CommandOutput -RawOutput $output
 
-    New-TextScreenshot -OutputPath $FileName -Title $Title -Command $Command -DisplayCommand $DisplayCommand -Body $normalized -Succeeded $ok
+    New-TextScreenshot -OutputPath $FileName -Title $Title -Command $Command -DisplayCommand $DisplayCommand -Body $normalized -StatusLabel $statusLabel -StatusKind $statusKind
 }
 
 Assert-Command -Name kubectl
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $screenshotsDir = Join-Path $repoRoot "screenshots"
+$clusterState = Get-ClusterState
+
+if ($clusterState.Connected) {
+    Write-Host "[INFO] Contexto ativo: $($clusterState.Context)" -ForegroundColor Green
+}
+elseif ($clusterState.HasContext) {
+    Write-Host "[WARN] Contexto '$($clusterState.Context)' encontrado, mas API indisponível." -ForegroundColor Yellow
+}
+else {
+    Write-Host "[WARN] Nenhum contexto Kubernetes ativo. Prints de cluster serão marcados como NÃO EXECUTADO." -ForegroundColor Yellow
+}
 
 $captures = @(
     @{ File = "01-kubectl-get-nodes.png"; Title = "kubectl get nodes"; Command = "kubectl get nodes" },
@@ -248,24 +345,30 @@ $captures = @(
     @{ File = "03-kubectl-get-pvc-all.png"; Title = "kubectl get pvc -A"; Command = "kubectl get pvc -A" },
     @{ File = "04-kubectl-get-storageclass.png"; Title = "kubectl get storageclass"; Command = "kubectl get storageclass" },
     @{ File = "05-describe-pvc-success.png"; Title = "describe pvc (sucesso esperado)"; Command = "kubectl describe pvc pvc-hostpath-demo -n storage-lab" },
-    @{ File = "06-describe-pvc-error.png"; Title = "describe pvc (erro controlado)"; Command = "kubectl describe pvc pvc-invalid -n storage-lab-quota" },
+    @{ File = "06-describe-pvc-error.png"; Title = "describe pvc (erro controlado)"; ExpectedOutcome = "expected-error"; Command = "kubectl describe pvc pvc-invalid -n storage-lab-quota" },
     @{ File = "07-emptydir-logs.png"; Title = "logs emptyDir writer/reader"; Command = "kubectl logs -n storage-lab pod/emptydir-demo -c writer --tail=25; echo '-----'; kubectl logs -n storage-lab pod/emptydir-demo -c reader --tail=25" },
     @{ File = "08-hostpath-http.png"; Title = "hostPath via NGINX"; Command = "kubectl exec -n storage-lab pod/hostpath-demo -- cat /usr/share/nginx/html/index.html" },
     @{ File = "09-nfs-shared-content.png"; Title = "NFS compartilhado entre réplicas"; Command = "kubectl get pods -n storage-lab -l app=nginx-nfs-demo; echo '-----'; kubectl exec -n storage-lab deployment/nginx-nfs-demo -- cat /usr/share/nginx/html/index.html" },
     @{ File = "10-configmap-volume.png"; Title = "ConfigMap montado em volume"; Command = "kubectl exec -n storage-lab-config pod-configmap-volume-demo -- ls -l /etc/config; echo '-----'; kubectl exec -n storage-lab-config pod-configmap-volume-demo -- cat /etc/config/app.properties" },
     @{ File = "11-secret-volume.png"; Title = "Secret montado em volume"; Command = "kubectl exec -n storage-lab-config pod-secret-volume-demo -- ls -l /etc/secret; echo '-----'; kubectl exec -n storage-lab-config pod-secret-volume-demo -- cat /etc/secret/username; echo '-----'; kubectl exec -n storage-lab-config pod-secret-volume-demo -- cat /etc/secret/password" },
-    @{ File = "12-scripts-apply-check-cleanup.png"; Title = "execução scripts PowerShell"; DisplayCommand = "scripts PowerShell (apply/check/cleanup)"; Command = "Write-Output 'Comando sugerido para evidência:'; Write-Output ''; Write-Output 'Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass'; Write-Output '.\\scripts\\apply-all.ps1'; Write-Output '.\\scripts\\check-resources.ps1'; Write-Output '.\\scripts\\cleanup-all.ps1'; Write-Output ''; Write-Output 'No CMD:'; Write-Output 'powershell -ExecutionPolicy Bypass -File .\\scripts\\check-resources.ps1'" }
+    @{ File = "12-scripts-apply-check-cleanup.png"; Title = "execução scripts PowerShell"; RequiresCluster = $false; DisplayCommand = "scripts PowerShell (apply/check/cleanup)"; Command = "Write-Output 'Comando sugerido para evidência:'; Write-Output ''; Write-Output 'Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass'; Write-Output '.\\scripts\\apply-all.ps1'; Write-Output '.\\scripts\\check-resources.ps1'; Write-Output '.\\scripts\\cleanup-all.ps1'; Write-Output ''; Write-Output 'No CMD:'; Write-Output 'powershell -ExecutionPolicy Bypass -File .\\scripts\\check-resources.ps1'" }
 )
 
 Write-Host "[INFO] Gerando screenshots em: $screenshotsDir" -ForegroundColor Yellow
 foreach ($c in $captures) {
     $path = Join-Path $screenshotsDir $c.File
-    if ($c.ContainsKey("DisplayCommand")) {
-        Capture-Screenshot -FileName $path -Title $c.Title -Command $c.Command -DisplayCommand $c.DisplayCommand
-    }
-    else {
-        Capture-Screenshot -FileName $path -Title $c.Title -Command $c.Command
-    }
+    $displayCommand = if ($c.ContainsKey("DisplayCommand")) { [string]$c.DisplayCommand } else { [string]$c.Command }
+    $expectedOutcome = if ($c.ContainsKey("ExpectedOutcome")) { [string]$c.ExpectedOutcome } else { "success" }
+    $requiresCluster = if ($c.ContainsKey("RequiresCluster")) { [bool]$c.RequiresCluster } else { $true }
+
+    Capture-Screenshot `
+        -FileName $path `
+        -Title $c.Title `
+        -Command $c.Command `
+        -DisplayCommand $displayCommand `
+        -ExpectedOutcome $expectedOutcome `
+        -RequiresCluster $requiresCluster `
+        -ClusterState $clusterState
 }
 
 Write-Host "[OK] Capturas finalizadas." -ForegroundColor Green
